@@ -5,15 +5,11 @@ I've had to disable invalid-name for some portions of this file as I use the con
 that all caps 'variable' names mean that it's a constant.
 """
 
-from __future__ import absolute_import
 import abc
-import six
-
 import kiwipy
 
 
-@six.add_metaclass(abc.ABCMeta)
-class CommunicatorTester(object):
+class CommunicatorTester(abc.ABC):
     # Disable invalid name because I use caps for constants which the linter doesn't like
     # also disable no-member for superclass calls because we use this as a mixin that gets used
     # with unittest.TestCase
