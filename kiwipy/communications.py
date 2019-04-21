@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 import abc
 import concurrent.futures
 import sys
@@ -37,8 +36,7 @@ class DuplicateSubscriberIdentifier(Exception):
 TimeoutError = concurrent.futures.TimeoutError  # pylint: disable=redefined-builtin
 
 
-@six.add_metaclass(abc.ABCMeta)
-class Communicator(object):
+class Communicator(abc.ABC):
     """
     The interface for a communicator used to both send and receive various
     types of message.

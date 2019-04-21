@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 import concurrent.futures
 import contextlib
 import logging
