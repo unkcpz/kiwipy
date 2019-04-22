@@ -15,6 +15,7 @@ class TestUtilities(unittest.TestCase):
         self.assertIs(exception, future.exception())
 
     def test_copy_future(self):
+        # Test copy
         source = kiwipy.Future()
         target = kiwipy.Future()
 
@@ -22,6 +23,17 @@ class TestUtilities(unittest.TestCase):
         kiwipy.copy_future(source, target)
 
         self.assertEqual(target.result(), "DONE")
+
+        # Test copy already done
+        source = kiwipy.Future()
+        target = kiwipy.Future()
+        target.set_result("Already Done")
+        self.assertTrue(target.done())
+
+        source.set_result("Source Done")
+        kiwipy.copy_future(source, target)
+
+        self.assertEqual(target.result(), "Already Done")
 
     def test_chain(self):
         source = kiwipy.Future()
