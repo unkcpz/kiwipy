@@ -51,6 +51,7 @@ setup(
             'pre-commit',
             'pytest>=4',
             'pytest-cov',
+            'asynctest',
             'ipython',
             'twine',
             'yapf',

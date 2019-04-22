@@ -355,15 +355,15 @@ class RmqCommunicator(object):
     def loop(self):
         return self._connection.loop
 
-    @gen.coroutine
-    def connect(self):
+    # @gen.coroutine
+    async def connect(self):
         if not self._connection.is_open:
-            yield self._connection.connect()
+            await self._connection.connect()
 
-        yield self._message_subscriber.connect()
-        yield self._task_subscriber.connect()
-        yield self._message_publisher.connect()
-        yield self._task_publisher.connect()
+        await self._message_subscriber.connect()
+        await self._task_subscriber.connect()
+        await self._message_publisher.connect()
+        await self._task_publisher.connect()
 
     @gen.coroutine
     def disconnect(self):
