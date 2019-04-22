@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 import shortuuid
 import topika
 from tornado import gen, testing, concurrent
