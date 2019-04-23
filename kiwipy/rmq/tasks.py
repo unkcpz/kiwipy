@@ -309,8 +309,8 @@ class RmqTaskPublisher(object):
                 try:
                     # If the response was a future it means we should another message that
                     # resolve that future
-                    if concurrent.is_future(response):
-                        self._awaiting_response[correlation_id] = response.result()
+                    if concurrent.is_future(response_future.result()):
+                        self._awaiting_response[correlation_id] = response_future.result()
                 except Exception:
                         pass
 

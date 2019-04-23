@@ -56,34 +56,34 @@ class TestCoroutineTaskBroker(asynctest.TestCase):
         self.assertEqual(tasks[0], TASK)
         self.assertEqual(RESULT, result)
 
-    # async def test_future_task(self):
-    #     """
-    #     Test a task that returns a future meaning that will be resolve to a value later
-    #     """
-    #     TASK = 'The meaning?'
-    #     RESULT = 42
-    #     result_future = kiwipy.Future()
-    #
-    #     tasks = []
-    #
-    #     def on_task(_comm, task):
-    #         tasks.append(task)
-    #         return result_future
-    #
-    #     await self.communicator.add_task_subscriber(on_task)
-    #     task_future = await self.communicator.task_send(TASK)
-    #
-    #     # The task has given us a future
-    #     future_from_task = await task_future
-    #     self.assertTrue(asyncio.isfuture(future_from_task))
-    #
-    #     # Now resolve the future which should give us a result
-    #     result_future.set_result(42)
-    #
-    #     result = await future_from_task
-    #
-    #     self.assertEqual(tasks[0], TASK)
-    #     self.assertEqual(RESULT, result)
+    async def test_future_task(self):
+        """
+        Test a task that returns a future meaning that will be resolve to a value later
+        """
+        TASK = 'The meaning?'
+        RESULT = 42
+        result_future = kiwipy.Future()
+
+        tasks = []
+
+        def on_task(_comm, task):
+            tasks.append(task)
+            return result_future
+
+        await self.communicator.add_task_subscriber(on_task)
+        task_future = await self.communicator.task_send(TASK)
+
+        # The task has given us a future
+        future_from_task = yield task_future
+        self.assertTrue(asyncio.isfuture(future_from_task))
+
+        # Now resolve the future which should give us a result
+        result_future.set_result(42)
+
+        result = await future_from_task
+
+        self.assertEqual(tasks[0], TASK)
+        self.assertEqual(RESULT, result)
 
     async def test_task_exception(self):
         TASK = 'The meaning?'
