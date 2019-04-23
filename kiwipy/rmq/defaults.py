@@ -15,7 +15,10 @@ QUEUE_EXPIRES = 60 * 1000
 REPLY_QUEUE_EXPIRES = 60 * 1000
 TASK_MESSAGE_TTL = 60000 * 60 * 24 * 7  # One week
 TASK_PREFETCH_SIZE = 0
+
+# not to give more than n message to a worker at a time
+# 0 for no limited
 TASK_PREFETCH_COUNT = 0
 
 ENCODER = partial(yaml.dump, encoding='utf-8')
-DECODER = partial(yaml.load)
+DECODER = partial(yaml.load, Loader=yaml.FullLoader)
