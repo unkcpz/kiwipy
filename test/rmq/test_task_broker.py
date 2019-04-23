@@ -56,6 +56,9 @@ class TestCoroutineTaskBroker(asynctest.TestCase):
         self.assertEqual(tasks[0], TASK)
         self.assertEqual(RESULT, result)
 
+    async def test_add_remove_task_subscriber(self):
+        pass
+
     async def test_future_task(self):
         """
         Test a task that returns a future meaning that will be resolve to a value later

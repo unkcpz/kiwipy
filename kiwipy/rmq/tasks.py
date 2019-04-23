@@ -216,6 +216,7 @@ class RmqTaskPublisher(object):
             self._delivery_info = deque()
 
         self._channel = None
+        self._exchange = None
         self._testing_mode = testing_mode
         self._awaiting_response = {}
 
@@ -250,6 +251,7 @@ class RmqTaskPublisher(object):
             self._is_closing = True
             if self._channel is not None:
                 await self._channel.close()
+                self._exchange = None
                 self._channel = None
 
     def _on_channel_close(self):
