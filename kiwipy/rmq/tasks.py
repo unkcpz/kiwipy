@@ -1,3 +1,5 @@
+import kiwipy
+
 import asyncio
 import aio_pika
 import logging

@@ -1,3 +1,5 @@
+import kiwipy
+
 import asynctest
 import asyncio
 import aio_pika
@@ -53,3 +55,72 @@ class TestCoroutineTaskBroker(asynctest.TestCase):
 
         self.assertEqual(tasks[0], TASK)
         self.assertEqual(RESULT, result)
+
+    # async def test_future_task(self):
+    #     """
+    #     Test a task that returns a future meaning that will be resolve to a value later
+    #     """
+    #     TASK = 'The meaning?'
+    #     RESULT = 42
+    #     result_future = kiwipy.Future()
+    #
+    #     tasks = []
+    #
+    #     def on_task(_comm, task):
+    #         tasks.append(task)
+    #         return result_future
+    #
+    #     await self.communicator.add_task_subscriber(on_task)
+    #     task_future = await self.communicator.task_send(TASK)
+    #
+    #     # The task has given us a future
+    #     future_from_task = await task_future
+    #     self.assertTrue(asyncio.isfuture(future_from_task))
+    #
+    #     # Now resolve the future which should give us a result
+    #     result_future.set_result(42)
+    #
+    #     result = await future_from_task
+    #
+    #     self.assertEqual(tasks[0], TASK)
+    #     self.assertEqual(RESULT, result)
+
+    async def test_task_exception(self):
+        TASK = 'The meaning?'
+
+        tasks = []
+
+        def on_task(_comm, task):
+            tasks.append(task)
+            raise RuntimeError("I cannea do it Captain!")
+
+        await self.communicator.add_task_subscriber(on_task)
+        with self.assertRaises(kiwipy.RemoteException):
+            result_future = await self.communicator.task_send(TASK)
+            await result_future
+
+        self.assertEqual(tasks[0], TASK)
+
+    async def test_task_no_reply(self):
+        """Test that we don't get a reply if we don't ask for one, i.e. fire-and-forget"""
+        TASK = 'The meaning?'  # pylint: disable=invalid-name
+        RESULT = 42  # pylint: disable=invalid-name
+
+        tasks = []
+
+        task_future = kiwipy.Future()
+
+        def on_task(_comm, task):
+            tasks.append(task)
+            task_future.set_result(RESULT)
+            return RESULT
+
+        await self.communicator.add_task_subscriber(on_task)
+        result = await self.communicator.task_send(TASK, no_reply=True)
+
+        # Make sure the task actually gets done
+        yield task_future
+
+        self.assertEqual(1, len(tasks))
+        self.assertEqual(tasks[0], TASK)
+        self.assertEqual(None, result)
