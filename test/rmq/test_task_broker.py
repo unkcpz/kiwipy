@@ -20,23 +20,23 @@ class TestCoroutineTaskBroker(asynctest.TestCase):
 
         if self.connection is None:
             self.connection = await aio_pika.connect_robust('amqp://guest:guest@localhost:5672/', loop=self.loop)
-        communicator = rmq.RmqTaskBroker(
+        broker = rmq.RmqTaskBroker(
             self.connection,
             task_exchange=task_exchange,
             task_queue=task_queue,
             testing_mode=True,
             **settings,
         )
-        await communicator.connect()
-        return communicator
+        await broker.connect()
+        return broker
 
     def setUp(self):
         super(TestCoroutineTaskBroker, self).setUp()
         self.loop = asyncio.new_event_loop()
-        self.communicator = self.loop.run_until_complete(self.new_task_broker())
+        self.broker = self.loop.run_until_complete(self.new_task_broker())
 
     def tearDown(self):
-        self.loop.run_until_complete(self.communicator.disconnect())
+        self.loop.run_until_complete(self.broker.disconnect())
         super(TestCoroutineTaskBroker, self).tearDown()
 
     async def test_task_send(self):
@@ -49,8 +49,8 @@ class TestCoroutineTaskBroker(asynctest.TestCase):
             tasks.append(task)
             return RESULT
 
-        await self.communicator.add_task_subscriber(on_task)
-        result_future = await self.communicator.task_send(TASK)
+        await self.broker.add_task_subscriber(on_task)
+        result_future = await self.broker.task_send(TASK)
         result = await result_future
 
         self.assertEqual(tasks[0], TASK)
@@ -70,8 +70,8 @@ class TestCoroutineTaskBroker(asynctest.TestCase):
             tasks.append(task)
             return result_future
 
-        await self.communicator.add_task_subscriber(on_task)
-        task_future = await self.communicator.task_send(TASK)
+        await self.broker.add_task_subscriber(on_task)
+        task_future = await self.broker.task_send(TASK)
 
         # The task has given us a future
         future_from_task = yield task_future
@@ -94,9 +94,9 @@ class TestCoroutineTaskBroker(asynctest.TestCase):
             tasks.append(task)
             raise RuntimeError("I cannea do it Captain!")
 
-        await self.communicator.add_task_subscriber(on_task)
+        await self.broker.add_task_subscriber(on_task)
         with self.assertRaises(kiwipy.RemoteException):
-            result_future = await self.communicator.task_send(TASK)
+            result_future = await self.broker.task_send(TASK)
             await result_future
 
         self.assertEqual(tasks[0], TASK)
@@ -115,8 +115,8 @@ class TestCoroutineTaskBroker(asynctest.TestCase):
             task_future.set_result(RESULT)
             return RESULT
 
-        await self.communicator.add_task_subscriber(on_task)
-        result = await self.communicator.task_send(TASK, no_reply=True)
+        await self.broker.add_task_subscriber(on_task)
+        result = await self.broker.task_send(TASK, no_reply=True)
 
         # Make sure the task actually gets done
         yield task_future
