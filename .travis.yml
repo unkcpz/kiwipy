@@ -2,11 +2,12 @@ language: python
 cache: pip
 
 
-before_install:
-  - sudo apt-get install rabbitmq-server
 addons:
   apt:
     update: true
+
+services:
+  - rabbitmq
 
 python:
   - 2.7
@@ -35,3 +36,13 @@ before_script:
 
 script:
   - py.test
+
+jobs:
+  include:
+    - stage: docs-test
+      python: 3.6
+      install:
+          - pip install .[rmq,dev,docs]
+          - pip install flake8
+      script:
+          - sphinx-build -nWT -b dummy docs/source build/html
