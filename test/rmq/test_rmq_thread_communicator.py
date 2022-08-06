@@ -2,7 +2,6 @@
 # pylint: disable=invalid-name, redefined-outer-name
 import concurrent.futures
 import pathlib
-import sys
 import unittest
 
 import pytest
@@ -273,3 +272,133 @@ def test_server_properties(thread_communicator: kiwipy.rmq.RmqThreadCommunicator
     assert props['product'] == b'RabbitMQ'
     assert 'version' in props
     assert props['platform'].startswith(b'Erlang')
+
+
+# region Broadcast
+
+
+def test_broadcast_send(thread_communicator: kiwipy.rmq.RmqThreadCommunicator):
+    SUBJECT = 'yo momma'
+    BODY = 'so fat'
+    SENDER_ID = 'me'
+    FULL_MSG = {'body': BODY, 'subject': SUBJECT, 'sender': SENDER_ID, 'correlation_id': None}
+
+    message1 = kiwipy.Future()
+    message2 = kiwipy.Future()
+
+    def on_broadcast_1(_comm, body, sender, subject, correlation_id):
+        message1.set_result({'body': body, 'subject': subject, 'sender': sender, 'correlation_id': correlation_id})
+
+    def on_broadcast_2(_comm, body, sender, subject, correlation_id):
+        message2.set_result({'body': body, 'subject': subject, 'sender': sender, 'correlation_id': correlation_id})
+
+    thread_communicator.add_broadcast_subscriber(on_broadcast_1)
+    thread_communicator.add_broadcast_subscriber(on_broadcast_2)
+
+    thread_communicator.broadcast_send(**FULL_MSG)
+
+    assert message1.result() == FULL_MSG
+    assert message2.result() == FULL_MSG
+
+
+def test_broadcast_filter_subject(thread_communicator: kiwipy.rmq.RmqThreadCommunicator):
+    subjects = []
+    EXPECTED_SUBJECTS = ['purchase.car', 'purchase.piano']
+
+    done = kiwipy.Future()
+
+    def on_broadcast_1(_comm, _body, _sender=None, subject=None, _correlation_id=None):
+        subjects.append(subject)
+        if len(subjects) == len(EXPECTED_SUBJECTS):
+            done.set_result(True)
+
+    thread_communicator.add_broadcast_subscriber(kiwipy.BroadcastFilter(on_broadcast_1, subject='purchase.*'))
+
+    for subj in ['purchase.car', 'purchase.piano', 'sell.guitar', 'sell.house']:
+        thread_communicator.broadcast_send(None, subject=subj)
+
+    assert len(subjects) == 2
+    assert EXPECTED_SUBJECTS == subjects
+
+
+def test_broadcast_filter_sender(thread_communicator: kiwipy.rmq.RmqThreadCommunicator):
+    EXPECTED_SENDERS = ['bob.jones', 'alice.jones']
+    senders = []
+
+    done = kiwipy.Future()
+
+    def on_broadcast_1(_comm, _body, sender=None, _subject=None, _correlation_id=None):
+        senders.append(sender)
+        if len(senders) == len(EXPECTED_SENDERS):
+            done.set_result(True)
+
+    thread_communicator.add_broadcast_subscriber(kiwipy.BroadcastFilter(on_broadcast_1, sender='*.jones'))
+
+    for subj in ['bob.jones', 'bob.smith', 'martin.uhrin', 'alice.jones']:
+        thread_communicator.broadcast_send(None, sender=subj)
+
+    assert len(senders) == 2
+    assert senders == EXPECTED_SENDERS
+
+
+def test_broadcast_filter_sender_and_subject(thread_communicator: kiwipy.rmq.RmqThreadCommunicator):
+    senders_and_subects = set()
+    EXPECTED = {
+        ('bob.jones', 'purchase.car'),
+        ('bob.jones', 'purchase.piano'),
+        ('alice.jones', 'purchase.car'),
+        ('alice.jones', 'purchase.piano'),
+    }
+
+    done = kiwipy.Future()
+
+    def on_broadcast_1(_comm, _body, sender=None, subject=None, _correlation_id=None):
+        senders_and_subects.add((sender, subject))
+        if len(senders_and_subects) == len(EXPECTED):
+            done.set_result(True)
+
+    filtered = kiwipy.BroadcastFilter(on_broadcast_1)
+    filtered.add_sender_filter('*.jones')
+    filtered.add_subject_filter('purchase.*')
+    thread_communicator.add_broadcast_subscriber(filtered)
+
+    for sender in ['bob.jones', 'bob.smith', 'martin.uhrin', 'alice.jones']:
+        for subj in ['purchase.car', 'purchase.piano', 'sell.guitar', 'sell.house']:
+            thread_communicator.broadcast_send(None, sender=sender, subject=subj)
+
+    assert len(senders_and_subects) == 4
+    assert senders_and_subects == EXPECTED
+
+
+# def test_add_remove_broadcast_subscriber(connection_params):
+#     # Set the expiry to something small so we know that the queues expire after we unsubscribe
+#     communicator = await utils.new_communicator(connection_params, settings={'queue_expires': 1})
+
+#     async with communicator:
+#         broadcast_received = asyncio.Future()
+
+#         def broadcast_subscriber(_comm, _body, _sender=None, _subject=None, _correlation_id=None):
+#             broadcast_received.set_result(True)
+
+#         # Check we're getting messages
+#         await communicator.add_broadcast_subscriber(broadcast_subscriber, broadcast_subscriber.__name__)
+#         await communicator.broadcast_send(None)
+#         assert (await broadcast_received) is True
+
+#         await communicator.remove_broadcast_subscriber(broadcast_subscriber.__name__)
+#         # Check that we're unsubscribed
+#         broadcast_received = asyncio.Future()
+#         with pytest.raises(asyncio.TimeoutError):
+#             await asyncio.wait_for(broadcast_received, timeout=2.)
+
+#         # Wait to make sure the queue is expired.  The queue_expires above is in milliseconds while below
+#         # it is in seconds so this should be enough for RMQ to get its ass in gear
+#         await asyncio.sleep(1.)
+
+#         # Now re-add and check we're getting messages
+#         broadcast_received = asyncio.Future()
+#         await communicator.add_broadcast_subscriber(broadcast_subscriber, broadcast_subscriber.__name__)
+#         await communicator.broadcast_send(None)
+#         assert (await broadcast_received) is True
+
+# endregion
